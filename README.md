@@ -56,4 +56,7 @@ where **mk.sh** is to make a Makefile with coq_makefile. At the Coq8.6 home dire
 
 > make clean; ./configure -local; make 
 
-to build. After settig your PATH to **./bin**, you can check these test files with your emacs and ProofGeneral. 
+to build. After settig your PATH to **./bin**, you can check these test files with your emacs and ProofGeneral. **cwc.v** includes the small examples from the above mentioned paper **Compiling without conitinuation**. To avoid irrelevant conflicts in the library compilation, I use a flag `ccred` to open up the designated reduction branch in **kernel/cClosure.ml**, which is turned on by loading **dbgflg_on.ml4**. **ccrev_error.v** is to show an example where `ccred` fails. It fails when Coq does type-checking at `Qed`, while it succesfully completes the proof in the proof interactions. 
+
+
+
