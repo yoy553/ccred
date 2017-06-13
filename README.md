@@ -68,12 +68,12 @@ Error: In pattern-matching on term "x" the branch for constructor
 ```
 
 ### Steps 
-1. download Coq 8.6 
-1. download the patch (ccred_coq8.6.patch) to the Coq 8.6 home 
-1. patch -p0 -i ccred_coq8.6.patch
+1. download Coq-8.6 (https://coq.inria.fr/distrib/V8.6/files/coq-8.6.tar.gz) and `tar xvfz` it
+1. download the patch (ccred_coq8.6.patch) to the Coq-8.6 home 
+1. run `patch -p0 -i ccred_coq8.6.patch` in the Coq-8.6 home
 1. compile the Coq (make clean; ./configure -local; make)
 1. set ./bin to your PATH 
-1. under ccred_test directory, run mk.sh to create the Makefile 
-1. run make
-1. open cwc.v with emacs with ProofGeneral to see `ccred` works (or check successful compilation with `coqc cwc.v`) 
+1. under **ccred_test** directory, run **mk.sh** to create the Makefile 
+1. `make` it
+1. open cwc.v with emacs with ProofGeneral to see `ccred` works (or check a successful compilation with `coqc cwc.v`) 
 1. open ccred_error.v with emacs with ProofGeneral (or by `coqc ccred_error.v`) to observe the above error
