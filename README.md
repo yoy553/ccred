@@ -58,5 +58,21 @@ where **mk.sh** is to make a Makefile with coq_makefile. At the Coq8.6 home dire
 
 to build. After settig your PATH to **./bin**, you can check these test files with your emacs and ProofGeneral. **cwc.v** includes the small examples from the above mentioned paper **Compiling without conitinuation**. To avoid irrelevant conflicts in the library compilation, I use a flag `ccred` to open up the designated reduction branch in **kernel/cClosure.ml**, which is turned on by loading **dbgflg_on.ml4**. **ccrev_error.v** is to show an example where `ccred` fails. It fails when Coq runs type-checking at `Qed`, while it succesfully completes the proof in the proof interactions. 
 
+```
+Error: In pattern-matching on term "x" the branch for constructor 
+"@cons" has type
+ "forall (b : bool) (x : list bool),
+  (if b then gen0 x else 0) = (if b then gen0 x else 0)" which should be
+ "forall (H : bool) (H0 : list bool),
+  (if H then gen0 x else 0) = (if H then gen0 H0 else 0)".
+```
 
+1. download Coq 8.6 
+1. download the patch (ccred_coq8.6.patch) to the Coq 8.6 home 
+1. patch -p0 -i ccred_coq8.6.patch
+1. compile the Coq (make clean; ./configure -local; make)
+1. set ./bin to your PATH 
+1. under ccred_test directory, run mk.sh to create the Makefile 
+1. run make
+1. open cwc.v and run 
 
