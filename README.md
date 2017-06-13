@@ -5,4 +5,12 @@
 Download it to the Coq8.6 directory and type  
 > patch -p0 -i ./ccred_coq8.6.patch 
 
-./ccred_test includes **cwc.v** and **ccred_error.v** which are the examples where `ccred` works and does not work respectively. 
+The patch, in addition to modifies the Coq source, adds a folder **ccred_test**, which includes **cwc.v** and **ccred_error.v** which are the examples where `ccred` works and does not work respectively. 
+
+* ./ccred_test
+  * _CoqProject
+  * mk.sh
+  * dbgflg_on.ml4
+  * ccrev_error.v
+  * cwc.v
+
