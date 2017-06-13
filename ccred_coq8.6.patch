@@ -1,0 +1,557 @@
+Index: intf/genredexpr.mli
+===================================================================
+--- intf/genredexpr.mli	(revision 505)
++++ intf/genredexpr.mli	(revision 523)
+@@ -15,6 +15,7 @@
+   | FMatch
+   | FFix
+   | FCofix
++  | FCcred    (* case-of-case reduction *)
+   | FZeta
+   | FConst of 'a list
+   | FDeltaBut of 'a list
+@@ -26,6 +27,7 @@
+   rMatch : bool;
+   rFix : bool;
+   rCofix : bool;
++  rCcred : bool;  (* case-ofcase reduction *)
+   rZeta : bool;
+   rDelta : bool; (** true = delta all but rConst; false = delta only on rConst*)
+   rConst : 'a list
+@@ -36,6 +38,7 @@
+ type ('a,'b,'c) red_expr_gen =
+   | Red of bool
+   | Hnf
++  | Ccred          (* case-of-case reduction *)
+   | Simpl of 'b glob_red_flag*('b,'c) Util.union Locus.with_occurrences option
+   | Cbv of 'b glob_red_flag
+   | Cbn of 'b glob_red_flag
+Index: parsing/g_tactic.ml4
+===================================================================
+--- parsing/g_tactic.ml4	(revision 505)
++++ parsing/g_tactic.ml4	(revision 523)
+@@ -22,7 +22,7 @@
+ open Pcoq
+ 
+ 
+-let all_with delta = Redops.make_red_flag [FBeta;FMatch;FFix;FCofix;FZeta;delta]
++let all_with delta = Redops.make_red_flag [FBeta;FMatch;FFix;FCofix;FCcred;FZeta;delta]   (* case-of-case reduction, FCcred *)
+ 
+ let tactic_kw = [ "->"; "<-" ; "by" ]
+ let _ = List.iter CLexer.add_keyword tactic_kw
+@@ -354,6 +354,7 @@
+       | IDENT "match" -> [FMatch]
+       | IDENT "fix" -> [FFix]
+       | IDENT "cofix" -> [FCofix]
++      | IDENT "ccred" -> [FCcred]
+       | IDENT "zeta" -> [FZeta]
+       | IDENT "delta"; d = delta_flag -> [d]
+     ] ]
+@@ -633,6 +634,10 @@
+           TacAtom (!@loc, TacReduce (Red false, cl))
+       | IDENT "hnf"; cl = clause_dft_concl ->
+           TacAtom (!@loc, TacReduce (Hnf, cl))
++
++      | IDENT "ccred"; cl = clause_dft_concl ->
++         TacAtom (!@loc, TacReduce (Ccred, cl))        (* case-of-case reduction *)
++
+       | IDENT "simpl"; d = delta_flag; po = OPT ref_or_pattern_occ; cl = clause_dft_concl ->
+           TacAtom (!@loc, TacReduce (Simpl (all_with d, po), cl))
+       | IDENT "cbv"; s = strategy_flag; cl = clause_dft_concl ->
+Index: ccred_test/_CoqProject
+===================================================================
+--- ccred_test/_CoqProject	(revision 0)
++++ ccred_test/_CoqProject	(revision 523)
+@@ -0,0 +1,3 @@
++dbgflg_on.ml4
++
++
+Index: ccred_test/dbgflg_on.ml4
+===================================================================
+--- ccred_test/dbgflg_on.ml4	(revision 0)
++++ ccred_test/dbgflg_on.ml4	(revision 523)
+@@ -0,0 +1,3 @@
++DECLARE PLUGIN "dbgflg_on"
++
++  Flags.ccred := true;;
+Index: ccred_test/ccred_error.v
+===================================================================
+--- ccred_test/ccred_error.v	(revision 0)
++++ ccred_test/ccred_error.v	(revision 523)
+@@ -0,0 +1,60 @@
++(*
++  Require Import FunctionalExtensionality.
++
++
++*)
++  Require Import Arith.
++  Require Import Recdef.
++  Require Import List.
++  Import ListNotations.
++  
++  Function f_func (bs: list bool) {measure length bs} : nat :=
++    match bs with
++    | [] => 0
++    | b::bs => if b then f_func bs else 0
++    end.
++  Proof.
++    intros; auto.
++  Defined.
++
++  Definition g (st: list bool) : list bool := 
++    match st with
++    | [] => []
++    | b::bs => if b then st else []
++    end.
++  
++  Lemma g_wont_expand: 
++    forall bs_in bs_out, bs_out = g bs_in -> length bs_out <= length bs_in.
++  Proof.
++    intro bs_in. 
++    destruct bs_in as [| bs_in]; intros bs_out SO; unfold g in SO;
++      subst bs_out; auto.
++    destruct bs_in; auto with arith. 
++  Qed.
++
++  Function gen0 (st: list bool) {measure length st} :=
++    match (g st) with
++    | [] => 0
++    | c::st => gen0 st 
++    end. 
++  Proof.
++    intros. symmetry in teq. apply g_wont_expand in teq. auto.
++  Defined.
++  
++  Goal forall x, gen0 x = f_func_F gen0 x.
++  Proof. 
++    unfold f_func_F. intro.
++    rewrite gen0_equation.
++    unfold g at 1.
++    destruct x; auto.
++    simpl.
++
++    Declare ML Module "dbgflg_on".
++    ccred.
++    reflexivity.
++  Qed.
++
++
++  
++
++
+Index: ccred_test/cwc.v
+===================================================================
+--- ccred_test/cwc.v	(revision 0)
++++ ccred_test/cwc.v	(revision 523)
+@@ -0,0 +1,65 @@
++(** Examples from Compiling without conitinuation 
++  
++  Luke Maurer, Paul Downen, Zena M. Ariola, and Simon Peyton Jones.
++  Submitted 2016/11/18
++  https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/join-points.pdf
++  Downloaded Jun 11, 2017. 
++
++*)
++          
++  
++  Goal if true then True else False.
++    now simpl. 
++  Qed. 
++  
++  Definition isNothing {A: Type} (x: option A) :=
++    match x with
++      None => true
++    | Some _ => false
++    end.       
++  Require Import List.
++  Import ListNotations.
++
++  Definition mHead {A: Type} (ps: list A) :=
++    match ps with
++    | [] => None
++    | p::_ => Some p
++    end.
++  
++  Definition null {A: Type} (aa: list A) :=
++    match (match aa with
++           | [] => None
++           | p::_ => Some p
++           end) with
++    | None => true
++    | Some _ => false
++  end.
++  
++  Goal forall {A: Type} (aa: list A),
++      null aa = match aa with
++                | [] => true
++                | _::_ => false
++                end.
++  Proof.
++    intros. 
++
++    Declare ML Module "dbgflg_on" .
++    unfold null.
++    reflexivity.
++  Qed. 
++
++  Goal forall {A: Type} (e1 e2 e3: bool) (e4 e5: A), 
++      (if (if e1 then e2 else e3) then e4 else e5)
++      = 
++      if e1 then (if e2 then e4 else e5)
++      else (if e3 then e4 else e5).
++  Proof.
++    Declare ML Module "dbgflg_on" .
++    now ccred. 
++  Qed.
++
++
++
++  
++
++  
+\ No newline at end of file
+Index: ccred_test/mk.sh
+===================================================================
+--- ccred_test/mk.sh	(revision 0)
++++ ccred_test/mk.sh	(revision 523)
+@@ -0,0 +1,3 @@
++#!/bin/sh
++
++coq_makefile -f _CoqProject -o Makefile
+
+Property changes on: ccred_test/mk.sh
+___________________________________________________________________
+Added: svn:executable
+## -0,0 +1 ##
++*
+\ No newline at end of property
+Index: lib/flags.ml
+===================================================================
+--- lib/flags.ml	(revision 505)
++++ lib/flags.ml	(revision 523)
+@@ -83,6 +83,8 @@
+ let in_debugger = ref false
+ let in_toplevel = ref false
+ 
++let ccred = ref false     (* case-of-case *)
++
+ let profile = false
+ 
+ let print_emacs = ref false
+Index: lib/flags.mli
+===================================================================
+--- lib/flags.mli	(revision 505)
++++ lib/flags.mli	(revision 523)
+@@ -44,6 +44,8 @@
+ val in_debugger : bool ref
+ val in_toplevel : bool ref
+ 
++val ccred: bool ref  (* case-of-case *)
++
+ val profile : bool
+ 
+ val print_emacs : bool ref
+Index: proofs/redexpr.ml
+===================================================================
+--- proofs/redexpr.ml	(revision 505)
++++ proofs/redexpr.ml	(revision 523)
+@@ -149,6 +149,7 @@
+   let red = if f.rMatch then red_add red fMATCH else red in
+   let red = if f.rFix then red_add red fFIX else red in
+   let red = if f.rCofix then red_add red fCOFIX else red in
++  let red = if f.rCcred then red_add red fCCRED else red in      (* case-of-case reduction *)
+   let red = if f.rZeta then red_add red fZETA else red in
+   let red =
+     if f.rDelta then (* All but rConst *)
+@@ -228,6 +229,7 @@
+       if internal then (e_red try_red_product,DEFAULTcast)
+       else (e_red red_product,DEFAULTcast)
+   | Hnf -> (e_red hnf_constr,DEFAULTcast)
++  | Ccred -> (e_red hnf_constr,DEFAULTcast)  (* case-of-case, use hnf_constr instead of making its own *)
+   | Simpl (f,o) ->
+      let whd_am = if !simplIsCbn then whd_cbn (make_flag f) else whd_simpl in
+      let am = if !simplIsCbn then strong_cbn (make_flag f) else simpl in
+Index: kernel/cClosure.ml
+===================================================================
+--- kernel/cClosure.ml	(revision 505)
++++ kernel/cClosure.ml	(revision 523)
+@@ -35,6 +35,11 @@
+ let beta = ref 0
+ let delta = ref 0
+ let eta = ref 0
++
++
++let ccred = ref 0             (* case-of-case *)
++
++
+ let zeta = ref 0
+ let evar = ref 0
+ let nb_match = ref 0
+@@ -85,6 +90,11 @@
+   val fFIX : red_kind
+   val fCOFIX : red_kind
+   val fZETA : red_kind
++  
++
++  val fCCRED : red_kind      (* case-of-case *)
++
++
+   val fCONST : constant -> red_kind
+   val fVAR : Id.t -> red_kind
+   val no_red : reds
+@@ -106,6 +116,9 @@
+     r_beta : bool;
+     r_delta : bool;
+     r_eta : bool;
++
++    r_ccred : bool;             (* case-of-case *)
++
+     r_const : transparent_state;
+     r_zeta : bool;
+     r_match : bool;
+@@ -114,6 +127,9 @@
+ 
+   type red_kind = BETA | DELTA | ETA | MATCH | FIX
+               | COFIX | ZETA
++
++              | CCRED            (* case-of-case reduction *)
++
+ 	      | CONST of constant | VAR of Id.t
+   let fBETA = BETA
+   let fDELTA = DELTA
+@@ -122,12 +138,18 @@
+   let fFIX = FIX
+   let fCOFIX = COFIX
+   let fZETA = ZETA
++
++  let fCCRED = CCRED (* case-of-case reduction *)
++
+   let fCONST kn  = CONST kn
+   let fVAR id  = VAR id
+   let no_red = {
+     r_beta = false;
+     r_delta = false;
+     r_eta = false;
++
++    r_ccred = false;           (* case-of-case reduction *)
++
+     r_const = all_opaque;
+     r_zeta = false;
+     r_match = false;
+@@ -138,6 +160,9 @@
+     | BETA -> { red with r_beta = true }
+     | ETA -> { red with r_eta = true }
+     | DELTA -> { red with r_delta = true; r_const = all_transparent }
++
++    | CCRED -> { red with r_ccred = true } (* case-of-case reduction *)
++
+     | CONST kn ->
+ 	let (l1,l2) = red.r_const in
+ 	{ red with r_const = l1, Cpred.add kn l2 }
+@@ -153,6 +178,9 @@
+     | BETA -> { red with r_beta = false }
+     | ETA -> { red with r_eta = false }
+     | DELTA -> { red with r_delta = false }
++
++    | CCRED -> { red with r_ccred = false } (* case-of-case reduction *)
++
+     | CONST kn ->
+ 	let (l1,l2) = red.r_const in
+ 	{ red with r_const = l1, Cpred.remove kn l2 }
+@@ -172,6 +200,9 @@
+   let red_set red = function
+     | BETA -> incr_cnt red.r_beta beta
+     | ETA -> incr_cnt red.r_eta eta
++
++    | CCRED -> incr_cnt red.r_ccred ccred  (* case-of-case reduction *)
++
+     | CONST kn ->
+ 	let (_,l) = red.r_const in
+ 	let c = Cpred.mem kn l in
+@@ -195,20 +226,20 @@
+ 
+ open RedFlags
+ 
+-let all = mkflags [fBETA;fDELTA;fZETA;fMATCH;fFIX;fCOFIX]
+-let allnolet = mkflags [fBETA;fDELTA;fMATCH;fFIX;fCOFIX]
+-let beta = mkflags [fBETA]
+-let betadeltazeta = mkflags [fBETA;fDELTA;fZETA]
+-let betaiota = mkflags [fBETA;fMATCH;fFIX;fCOFIX]
+-let betaiotazeta = mkflags [fBETA;fMATCH;fFIX;fCOFIX;fZETA]
+-let betazeta = mkflags [fBETA;fZETA]
+-let delta = mkflags [fDELTA]
+-let zeta = mkflags [fZETA]
++let all           = mkflags [fBETA;fDELTA;fZETA;fMATCH;fFIX;fCOFIX;      fCCRED] (* case-of-case reduction, fCCRED *)
++let allnolet      = mkflags [fBETA;fDELTA;      fMATCH;fFIX;fCOFIX;      fCCRED]
++let beta          = mkflags [fBETA                                             ]
++let betadeltazeta = mkflags [fBETA;fDELTA;                         fZETA       ]
++let betaiota      = mkflags [fBETA;             fMATCH;fFIX;fCOFIX;      fCCRED] (* case-of-case reduction, fCCRED *)
++let betaiotazeta  = mkflags [fBETA;             fMATCH;fFIX;fCOFIX;fZETA;fCCRED] (* case-of-case reduction, fCCRED *)
++let betazeta      = mkflags [fBETA;                                fZETA       ]
++let delta         = mkflags [      fDELTA                                      ]
++let zeta          = mkflags [                                      fZETA       ]
+ let nored = no_red
+ 
+ (* Removing fZETA for finer behaviour would break many developments *)
+-let unfold_side_flags = [fBETA;fMATCH;fFIX;fCOFIX;fZETA]
+-let unfold_side_red = mkflags [fBETA;fMATCH;fFIX;fCOFIX;fZETA]
++let unfold_side_flags     = [fBETA;             fMATCH;fFIX;fCOFIX;fZETA;fCCRED] (* case-of-case reduction, fCCRED *)
++let unfold_side_red = mkflags [fBETA;           fMATCH;fFIX;fCOFIX;fZETA;fCCRED] (* case-of-case reduction, fCCRED *)
+ let unfold_red kn =
+   let flag = match kn with
+     | EvalVarRef id -> fVAR id
+@@ -898,6 +929,42 @@
+ 
+ (************************************************************************)
+ 
++let rec is_nested_match_stk m stk =
++  match stk with
++  | [] -> false
++  | [a] -> false
++  | ZcaseT _ :: stk ->        
++     ( match (compact_stack m stk) with 
++       | ZcaseT _ :: stk -> true
++       | _ -> false)
++  | h :: t -> is_nested_match_stk m t 
++
++                                        
++let rec ccred_reduction info stk m =                            
++  match stk with
++  | ZcaseT (ci_in,t_in,brs_in,env_in) :: stk -> 
++     (
++       match (compact_stack m stk) with 
++       | ZcaseT (ci_out,t_out,brs_out,env_out) :: stk -> let tctxt_in, tb_in   = decompose_lam t_in    in 
++                                                         let tctxt_out, tb_out = decompose_lam t_out   in 
++                                                         let num_targs_in      = List.length tctxt_in  in
++                                                         let num_targs_out     = List.length tctxt_out in
++                                                         let t_new = compose_lam tctxt_in (applistc (lift num_targs_in t_out) [tb_in])  in 
++                                                         let f brs_in_ith = match kind_of_term brs_in_ith with 
++                                                           | Lambda _ -> let ctxt_in,b_in = decompose_lam brs_in_ith                    in 
++                                                                         let num_args_in  = List.length ctxt_in                         in 
++                                                                         let brs_out_new  = Array.map (lift num_args_in) brs_out        in
++                                                                         compose_lam ctxt_in (mkCase (ci_out, t_out, b_in, brs_out_new))                       
++                                                           | _ -> mkCase (ci_out, t_out, brs_in_ith, brs_out)                                        
++                                                         in                                                                                          
++                                                         let brs_new = Array.map f brs_in              in 
++                                                         let env_new = env_out                         in
++                                                         ZcaseT (ci_in, t_new, brs_new, env_new)::stk                                  
++       | _ -> assert false )
++  | h1::stk -> h1 :: ccred_reduction info (compact_stack m stk) m
++  | _ -> assert false (* checked by the branch predicate [is_nested_match_stk] *)
++
++
+ (* Computes a weak head normal form from the result of knh. *)
+ let rec knr info m stk =
+   match m.term with
+@@ -949,6 +1016,12 @@
+       (match evar_value info.i_cache ev with
+           Some c -> knit info env c stk
+         | None -> (m,stk))
++
++  | FFlex _ | FRel _ when !Flags.ccred &&
++                            (is_nested_match_stk m stk) && 
++                              (red_set info.i_flags fCCRED) && !Flags.ccred   -> 
++     (m, ccred_reduction info stk m)
++
+   | _ -> (m,stk)
+ 
+ (* Computes the weak head normal form of a term *)
+Index: kernel/cClosure.mli
+===================================================================
+--- kernel/cClosure.mli	(revision 505)
++++ kernel/cClosure.mli	(revision 523)
+@@ -46,6 +46,9 @@
+   val fFIX : red_kind
+   val fCOFIX : red_kind
+   val fZETA : red_kind
++
++  val fCCRED : red_kind                   (* case-of-case reduction *)
++
+   val fCONST : constant -> red_kind
+   val fVAR : Id.t -> red_kind
+ 
+Index: pretyping/redops.ml
+===================================================================
+--- pretyping/redops.ml	(revision 505)
++++ pretyping/redops.ml	(revision 523)
+@@ -17,6 +17,7 @@
+     | FMatch :: lf -> add_flag { red with rMatch = true } lf
+     | FFix :: lf -> add_flag { red with rFix = true } lf
+     | FCofix :: lf -> add_flag { red with rCofix = true } lf
++    | FCcred :: lf -> add_flag { red with rCcred = true } lf (** case-of-case reduction *)
+     | FZeta :: lf -> add_flag { red with rZeta = true } lf
+     | FConst l :: lf ->
+ 	if red.rDelta then
+@@ -33,10 +34,12 @@
+   in
+   add_flag
+     {rBeta = false; rMatch = false; rFix = false; rCofix = false;
++     rCcred = false; (* case-of-case reduction *)
+      rZeta = false; rDelta = false; rConst = []}
+     l
+ 
+ 
+ let all_flags =
+   {rBeta = true; rMatch = true; rFix = true; rCofix = true;
++   rCcred = true; (* case-of-case reduction *)
+    rZeta = true; rDelta = true; rConst = []}
+Index: plugins/funind/recdef.ml
+===================================================================
+--- plugins/funind/recdef.ml	(revision 505)
++++ plugins/funind/recdef.ml	(revision 523)
+@@ -162,6 +162,10 @@
+   reduce
+     (Lazy
+        {rBeta=true;rMatch=true;rFix=true;rCofix=true;rZeta=true;rDelta=false;
++        rCcred=true;  (* case-of-case reduction *)
++        (*
++        if Flags.ccred then rCcred=true else rCcred=false; (* case-of-case reduction *)
++        *)
+         rConst = [ EvalConstRef (const_of_ref (delayed_force iter_ref))]})
+     clause
+ 
+Index: ltac/tacintern.ml
+===================================================================
+--- ltac/tacintern.ml	(revision 505)
++++ ltac/tacintern.ml	(revision 523)
+@@ -399,7 +399,9 @@
+ 	    Option.map (intern_typed_pattern_or_ref_with_occurrences ist) o)
+   | CbvVm o -> CbvVm (Option.map (intern_typed_pattern_or_ref_with_occurrences ist) o)
+   | CbvNative o -> CbvNative (Option.map (intern_typed_pattern_or_ref_with_occurrences ist) o)
+-  | (Red _ | Hnf | ExtraRedExpr _ as r ) -> r
++  | (Red _ | Hnf 
++    | Ccred        (* case-of-case reduction *)
++    | ExtraRedExpr _ as r ) -> r
+ 
+ let intern_in_hyp_as ist lf (id,ipat) =
+   (intern_hyp ist id, Option.map (intern_intro_pattern lf ist) ipat)
+Index: ltac/tacinterp.ml
+===================================================================
+--- ltac/tacinterp.ml	(revision 505)
++++ ltac/tacinterp.ml	(revision 523)
+@@ -784,7 +784,9 @@
+     sigma , CbvVm (Option.map (interp_closed_typed_pattern_with_occurrences ist env sigma) o)
+   | CbvNative o ->
+     sigma , CbvNative (Option.map (interp_closed_typed_pattern_with_occurrences ist env sigma) o)
+-  | (Red _ |  Hnf | ExtraRedExpr _ as r) -> sigma , r
++  | (Red _ |  Hnf 
++    | Ccred   (* case-of-case reduction *)
++    | ExtraRedExpr _ as r) -> sigma , r
+ 
+ let interp_may_eval f ist env sigma = function
+   | ConstrEval (r,c) ->
+Index: tactics/tactics.ml
+===================================================================
+--- tactics/tactics.ml	(revision 505)
++++ tactics/tactics.ml	(revision 523)
+@@ -4981,6 +4981,10 @@
+     in
+     reduce
+       (Lazy {rBeta=true;rMatch=true;rFix=true;rCofix=true;
++             rCcred=true; (* case-of-case reduction *)
++             (*
++             (if !Flags.ccred then rCcred=true else rCcred=false); (* case-of-case reduction *)
++             *)
+ 	     rZeta=false;rDelta=false;rConst=[]})
+       {onhyps; concl_occs=AllOccurrences }
+ 
