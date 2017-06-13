@@ -5,7 +5,7 @@
 Download it to the Coq8.6 directory and type  
 > patch -p0 -i ./ccred_coq8.6.patch 
 
-The patch, in addition to modifies the Coq source, adds a folder **ccred_test**, which includes **cwc.v** and **ccred_error.v** which are the examples where `ccred` works and does not work respectively. 
+The patch, in addition to modifies the Coq source, adds a folder **ccred_test**, which includes **cwc.v** and **ccred_error.v** which are the examples where `ccred` works and does not work respectively:
 
 * ./ccred_test
   * _CoqProject
@@ -14,3 +14,8 @@ The patch, in addition to modifies the Coq source, adds a folder **ccred_test**,
   * ccrev_error.v
   * cwc.v
 
+where **mk.sh** is to make a Makefile with coq_makefile. At the Coq8.6 home directory, 
+
+> make clean; ./configure -local; make 
+
+to build. After settig your PATH to **./bin**, you can check these test files with your emacs and ProofGeneral. 
