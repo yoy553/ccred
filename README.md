@@ -38,6 +38,8 @@ end
 ```
 by iota-reductions. 
 
+# How to use it
+
 Download it to the Coq8.6 directory and type  
 > patch -p0 -i ./ccred_coq8.6.patch 
 
