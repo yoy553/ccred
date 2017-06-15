@@ -72,7 +72,7 @@ Error: In pattern-matching on term "x" the branch for constructor
 1. download the patch (ccred_coq8.6.patch) to the Coq-8.6 home 
 1. run `patch -p0 -i ccred_coq8.6.patch` in the Coq-8.6 home
 1. compile the Coq (make clean; ./configure -local; make)
-1. set 'pwd'/bin to your PATH 
+1. set \`pwd\`/bin to your PATH 
 1. under **ccred_test** directory, run **mk.sh** to create the Makefile 
 1. `make` it (there may be three identical warnings that *findlib: [WARNING] cannot read directory /dev/null: Not a directory*)
 1. open cwc.v with emacs with ProofGeneral to see `ccred` works (or check a successful compilation with `coqc cwc.v`) 
