@@ -1,7 +1,7 @@
 # ccred
 
-**ccred_coq8.6.patch** is to add an "incomplete" tactc `ccred` to Coq-8.6. `ccred` attempts to run a syntactic reduction with *case-of-case trasformation* without eliminating the inductive variable. Case-of-case trasformation is
-mentioned by **Compiling without conitinuation** (Luke Maurer, Paul Downen, Zena M. Ariola, and Simon Peyton Jones, Submitted 2016/11/18). https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/join-points.pdf. It is to transform nested `match`-expressions, for example 
+**ccred_coq8.6.patch** is to add an "incomplete" tactic `ccred` to Coq-8.6. `ccred` attempts to run a syntactic reduction with *case-of-case transformation* without eliminating the inductive variable. Case-of-case transformation is
+mentioned by **Compiling without continuation** (Luke Maurer, Paul Downen, Zena M. Ariola, and Simon Peyton Jones, Submitted 2016/11/18). https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/join-points.pdf. It is to transform nested `match`-expressions, for example 
 
 ```
 match (match aa with
@@ -56,7 +56,7 @@ where **mk.sh** is to make a Makefile with coq_makefile. At the Coq-8.6 home dir
 
 > make clean; ./configure -local; make 
 
-to build. After settig your PATH to **`pwd`/bin**, you can check these test files with your emacs and ProofGeneral (or with 'coqc'). **cwc.v** includes the small examples from the above mentioned paper **Compiling without continuation**. To avoid irrelevant conflicts in the library compilation, I use a flag `ccred` to open up the designated reduction branch in **kernel/cClosure.ml**, which is turned on by loading **dbgflg_on.ml4**. **ccred_error.v** is to show an example where `ccred` fails. It fails when Coq runs type-checking at `Qed`, while it succesfully completes the proof in the proof interactions. In specifc it casuses the following error: 
+to build. After setting your PATH to **`pwd`/bin**, you can check these test files with your emacs and ProofGeneral (or with 'coqc'). **cwc.v** includes the small examples from the above mentioned paper **Compiling without continuation**. To avoid irrelevant conflicts in the library compilation, I use a flag `ccred` to open up the designated reduction branch in **kernel/cClosure.ml**, which is turned on by loading **dbgflg_on.ml4**. **ccred_error.v** is to show an example where `ccred` fails. It fails when Coq runs type-checking at `Qed`, while it successfully completes the proof in the proof interactions. In specific it causes the following error: 
 
 ```
 Error: In pattern-matching on term "x" the branch for constructor 
@@ -68,7 +68,7 @@ Error: In pattern-matching on term "x" the branch for constructor
 ```
 
 ### Steps 
-1. download Coq-8.6 (https://coq.inria.fr/distrib/V8.6/files/coq-8.6.tar.gz), `tar xvfz` it and setup environment needed to copile Coq-8.6
+1. download Coq-8.6 (https://coq.inria.fr/distrib/V8.6/files/coq-8.6.tar.gz), `tar xvfz` it and setup environment needed to compile Coq-8.6
 1. download the patch (ccred_coq8.6.patch) to the Coq-8.6 home 
 1. run `patch -p0 -i ccred_coq8.6.patch` in the Coq-8.6 home
 1. compile the Coq (make clean; ./configure -local; make)
