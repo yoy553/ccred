@@ -68,7 +68,7 @@ Error: In pattern-matching on term "x" the branch for constructor
 ```
 
 ### Steps 
-1. download Coq-8.6 (https://coq.inria.fr/distrib/V8.6/files/coq-8.6.tar.gz) and `tar xvfz` it
+1. download Coq-8.6 (https://coq.inria.fr/distrib/V8.6/files/coq-8.6.tar.gz), `tar xvfz` it and setup environment needed to copile Coq-8.6
 1. download the patch (ccred_coq8.6.patch) to the Coq-8.6 home 
 1. run `patch -p0 -i ccred_coq8.6.patch` in the Coq-8.6 home
 1. compile the Coq (make clean; ./configure -local; make)
