@@ -56,7 +56,7 @@ where **mk.sh** is to make a Makefile with coq_makefile. At the Coq-8.6 home dir
 
 > make clean; ./configure -local; make 
 
-to build. After setting your PATH to **`pwd`/bin**, you can check these test files with your emacs and ProofGeneral (or with 'coqc'). **cwc.v** includes the small examples from the above mentioned paper **Compiling without continuation**. To avoid irrelevant conflicts in the library compilation, I use a flag `ccred` to open up the designated reduction branch in **kernel/cClosure.ml**, which is turned on by loading **dbgflg_on.ml4**. **ccred_error.v** is to show an example where `ccred` fails. It fails when Coq runs type-checking at `Qed`, while it successfully completes the proof in the proof interactions. In specific it causes the following error: 
+to build. After setting your PATH to **\`pwd\`/bin**, you can check these test files with your emacs and ProofGeneral (or with 'coqc'). **cwc.v** includes the small examples from the above mentioned paper **Compiling without continuation**. To avoid irrelevant conflicts in the library compilation, I use a flag `ccred` to open up the designated reduction branch in **kernel/cClosure.ml**, which is turned on by loading **dbgflg_on.ml4**. **ccred_error.v** is to show an example where `ccred` fails. It fails when Coq runs type-checking at `Qed`, while it successfully completes the proof in the proof interactions. In specific it causes the following error: 
 
 ```
 Error: In pattern-matching on term "x" the branch for constructor 
