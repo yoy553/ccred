@@ -76,4 +76,4 @@ Error: In pattern-matching on term "x" the branch for constructor
 1. under **ccred_test** directory, run **mk.sh** to create the Makefile 
 1. `make` it (there may be three identical warnings that *findlib: [WARNING] cannot read directory /dev/null: Not a directory*)
 1. open cwc.v with emacs with ProofGeneral to see `ccred` works (or check a successful compilation with `coqc cwc.v`) 
-1. open ccred_error.v with emacs with ProofGeneral (or by `coqc ccred_error.v`) to observe the above error: in the second type, somehow ‘x’ has been replaced with ‘H0’ in the second if-expression, almost as if the de Bruijn index has gotten confused.
+1. open ccred_error.v with emacs with ProofGeneral (or by `coqc ccred_error.v`) to observe the above error: in the second type, somehow ‘x’ has been replaced with ‘H0’ in the second if-expression, almost as if the De Bruijn index has gotten confused.
